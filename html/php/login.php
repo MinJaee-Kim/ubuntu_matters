@@ -19,7 +19,7 @@
 
     while(mysqli_stmt_fetch($statement)) {
         $response["success"] = true;
-        $response["success"] = true;
+        $response["id"] = $id;
         $response["username"] = $username;
         $response["password"] = $password;
         $response["nickname"] = $nickname;
