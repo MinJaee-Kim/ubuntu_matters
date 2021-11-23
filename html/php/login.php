@@ -1,33 +1,43 @@
 <?php
-    error_reporting(E_ALL);
+error_reporting(E_ALL);
     ini_set('display_errors',1);
-    $con = mysqli_connect("localhost", "root", "root1234!", "view_matzip");
-    mysqli_query($con,'SET NAMES utf8');
+
+    include 'dbcon.php';
+    include 'token.php';
+
+    $database = new Database();
+    $con = $database->getConnection();
 
     $username = $_POST["username"];
+    $isAutoLog = $_POST["is_auto_log"];
 
-    $statement = mysqli_prepare($con, "SELECT * FROM member WHERE username = ?");
+    $statement = mysqli_prepare($con, "SELECT user_id, password FROM member WHERE username = ?");
     mysqli_stmt_bind_param($statement, "s", $username);
     mysqli_stmt_execute($statement);
 
 
     mysqli_stmt_store_result($statement);
-    mysqli_stmt_bind_result($statement,$id, $username, $password, $nickname, $user_photo_url, $status_message, $authority, $enabled);
+    mysqli_stmt_bind_result($statement,$user_id, $password);
 
     $response = array();
     $response["success"] = false;
 
     while(mysqli_stmt_fetch($statement)) {
         $response["success"] = true;
-        $response["id"] = $id;
+        $response["cre"] = time();
+        $response["exp"] = time() + (3600 * 24);
+        $response["user_id"] = $user_id;
         $response["username"] = $username;
         $response["password"] = $password;
-        $response["nickname"] = $nickname;
-        $response["user_photo_url"] = $user_photo_url;
-        $response["status_message"] = $status_message;
-        $response["authority"] = $authority;
-        $response["enabled"] = $enabled;
     }
 
-    echo json_encode($response);
+    $response["token_value"] = hashing($response);
+
+    $statement = mysqli_prepare($con, "INSERT INTO token(token_value, seq, is_using, create_date, expire_date, is_auto_log) VALUES (?,?,'Y',?,?,?)");
+    mysqli_stmt_bind_param($statement, "siiii", $response["token_value"], $response["user_id"], $response["cre"],$response["exp"], $isAutoLog);
+    mysqli_stmt_execute($statement) or die('this user is already in use') ;
+
+    mysqli_commit($con);
+
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
 ?>
